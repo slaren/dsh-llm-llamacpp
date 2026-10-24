@@ -9,6 +9,14 @@
   that route fails with `MISSING_CREDENTIAL` until the row is edited again.
   Store the key first, or unset `apiKeyEnv` when the key store fails.
 
+- [ ] **Remember the last reasoning effort per model.** Store the effort the user
+  last selected for a `provider|model` pair and make it the default when that
+  model is selected again, instead of falling back to the template default.
+  An explicit selection updates the memory; a model that disappears must not
+  leak its effort to another model. Decide whether the memory is per profile or
+  per session, and keep a stale level from being sent when the server no longer
+  advertises it (`UNSUPPORTED_REASONING_EFFORT` fallback).
+
 ## Tasks to consider
 
 - [ ] **Expose slot affinity in the UI.** Add the assigned `id_slot` to
@@ -44,14 +52,6 @@
   endpoint maps `thinking.budget_tokens` to it). Add support if DSH exposes a
   reasoning-token budget, with the budget passed through only when the template
   advertises reasoning support.
-
-- [ ] **Remember the last reasoning effort per model.** Store the effort the user
-  last selected for a `provider|model` pair and make it the default when that
-  model is selected again, instead of falling back to the template default.
-  An explicit selection updates the memory; a model that disappears must not
-  leak its effort to another model. Decide whether the memory is per profile or
-  per session, and keep a stale level from being sent when the server no longer
-  advertises it (`UNSUPPORTED_REASONING_EFFORT` fallback).
 
 - [ ] **Improve upstream error detail.** Preserve a short server message excerpt
   for 400/422 template errors and context-overflow cases, so users can see which
