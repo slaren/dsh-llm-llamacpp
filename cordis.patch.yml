@@ -1,0 +1,56 @@
+- insert:
+    - id: dsh-llm-llamacpp
+      name: 'dsh-llm-llamacpp'
+      config:
+        # Every entry becomes a provider route you can select in the model picker,
+        # named by its key. There is no discovery and no rewriting of other
+        # providers: a request goes to the endpoint written here, and a wrong
+        # `baseURL` shows up as a validation error on its row rather than a missing
+        # route.
+        #
+        # This map is editable from Settings → Models: each route is a row under
+        # "Third-party model providers" that opens this plugin's own card, and a save
+        # there applies immediately — the map is a volatile config field, so the
+        # loader commits it without re-applying the plugin. A page edit lands in this
+        # same block of the profile's cordis.patch.yml, which then wins over this
+        # seed.
+        #
+        # It starts EMPTY on purpose: the plugin serves no route until one is added
+        # from the page, and the page's add list always offers one "llama.cpp (new
+        # server)" row for that (and every later) server. A seeded route here would be
+        # composition-layer config, which the page cannot delete (only a user-layer
+        # profile can).
+        #
+        # The map key (`llamacpp-local` here) is the provider route id. The GUI
+        # assigns the first free `llamacpp*` id and never asks for one; advanced
+        # deployments that need a stable external key can rename it here.
+        #
+        # A server profile is only what the user owns:
+        #
+        # servers:
+        #   llamacpp-local:
+        #     # The bare name used in the UI; the row and picker render it as
+        #     # `llama.cpp (<alias>)`. Optional: defaults to the endpoint's host:port.
+        #     alias: local
+        #     # Required, and must include the API path: requests go to
+        #     # `${baseURL}/chat/completions`, and llama-server's OpenAI-compatible
+        #     # base is `http://127.0.0.1:9931/v1`. A bare host:port is rejected.
+        #     baseURL: http://127.0.0.1:9931/v1
+        #     # Optional credential reference, resolved through DSH credentials (then
+        #     # the launch environment) on every request. Nothing here writes a secret.
+        #     apiKeyEnv: LLAMACPP_LOCAL_API_KEY
+        #
+        # The served model(s), context window, and default output cap are NOT config:
+        # they are read from the server's `/v1/models` and `/props` every time the
+        # picker resolves a model.
+        servers: {}
+        # How often the page asks /llamacpp-metrics/live for the current snapshot,
+        # in milliseconds. The pill's progress comes from this process's SSE state,
+        # so a closed metrics dialog causes no upstream request; while the dialog is
+        # open, each poll also reads /metrics and /slots. Lower is smoother but more
+        # local requests; clamped to 500..60000 ms (500 here).
+        clientPollMs: 500
+        # Stream idle ceiling in ms, matching pi-ai's default: a server that stops
+        # sending bytes fails as TIMEOUT (retryable) instead of hanging the turn
+        # until the user aborts. 0 disables the guard.
+        streamIdleTimeoutMs: 300000

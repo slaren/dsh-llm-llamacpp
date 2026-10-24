@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "llama.cpp Provider",
+    "description": "Adds llama.cpp servers as model providers, with model and context discovery, per-session slot affinity, and live throughput and KV-cache readings."
+  }
+}

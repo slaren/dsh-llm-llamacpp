@@ -1,0 +1,18 @@
+<svg width="36" height="36" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!--
+  Official llama.brand mark, unaltered geometry:
+  https://github.com/ggml-org/llama.brand (icon/icon-light.svg, icon/icon-dark.svg)
+
+  The assets are CC BY-NC 4.0 with a grant from ggml-org to reproduce them —
+  including inside software distributions and package metadata — to identify
+  llama.cpp, and to rescale them and render them in a single colour. The shape is
+  therefore not redrawn; only the fill follows the reader's colour scheme, so the
+  mark stays visible on either surface. Attribution: see CREDITS.md.
+-->
+<style>
+  path { fill: #111111 }
+  @media (prefers-color-scheme: dark) { path { fill: #FAFAFA } }
+</style>
+<path d="M600 392L504.249 558L504.137 557.929C487.252 584.069 458.193 600 426.864 600H120L240 392H600Z"/>
+<path d="M240 392H0L199.602 46.0254C216.032 17.5463 246.411 3.25756e-05 279.29 0H466.154L240 392Z"/>
+</svg>
