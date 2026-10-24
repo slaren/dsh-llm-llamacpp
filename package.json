@@ -2,6 +2,7 @@
   "name": "dsh-llm-llamacpp",
   "version": "1.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Adds llama.cpp servers as DSH model providers, with model and context discovery, per-session slot affinity, and live throughput and KV-cache readings.",
   "exports": {

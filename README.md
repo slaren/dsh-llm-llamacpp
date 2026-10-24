@@ -51,6 +51,18 @@ manager installs the package and its dependencies, selects the bundle, and
 applies the bundled `cordis.patch.yml`. Restart the host if DSH reports that a
 restart is required.
 
+### Command line
+
+The same install from a shell, using `npx`:
+
+```sh
+npx @deepseek-ai/dsh plugin --profile web add github:slaren/dsh-llm-llamacpp
+```
+
+`web` is the profile to install into; substitute another profile name when
+needed. If `dsh` is already on your `PATH`, use `dsh plugin ...` instead of
+`npx @deepseek-ai/dsh plugin ...`.
+
 For local development, clone the repository and install the checkout by path
 instead:
 
@@ -119,3 +131,11 @@ proposals, and [`CREDITS.md`](CREDITS.md) for the llama.brand attribution.
 - The plugin does not start or manage `llama-server`.
 - Telemetry endpoints are optional; the dialog degrades when they are absent.
 - Not affiliated with or endorsed by ggml-org.
+
+## License
+
+The plugin code is released under the [MIT License](LICENSE).
+
+The llama.brand mark in `icon.svg` and in the client's pill and dialog title is
+third-party artwork. It is not relicensed by MIT; see [CREDITS.md](CREDITS.md)
+for its license and the brand-usage grant.
