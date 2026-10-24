@@ -478,8 +478,9 @@ check('metrics off states the fix in place',
 check('enabled but empty says so',
   MetricView({ metrics: { raw: [] }, metricsEnabled: true, slots: null, t }).children[0],
   'The server reported no metrics samples.')
-check('no readings yet renders nothing',
-  MetricView({ metrics: null, metricsEnabled: true, slots: null, t }), null)
+check('enabled but unreadable says so',
+  MetricView({ metrics: null, metricsEnabled: true, slots: null, t }).children[0],
+  'Metrics are enabled, but this reading is unavailable right now.')
 
 // --- collapsible sections -------------------------------------------------
 // A reader hides what they do not care about, and the preference outlives both
@@ -515,6 +516,7 @@ check('a collapsed section without a hint just shows its title',
 check('the collapsed hint leads with the strip',
   metricHint(metricsFixture, true, slotsTotal, t), '9.2 tok/s · 86%')
 check('metrics off says so in the heading', metricHint(null, false, null, t), 'metrics off')
+check('an unreadable metrics reading says so in the heading', metricHint(null, true, null, t), 'metrics unavailable')
 check('nothing to curate means no hint', metricHint({ raw: [] }, true, null, t), '')
 
 // --- formatters (the real ones, not a local copy) ------------------------

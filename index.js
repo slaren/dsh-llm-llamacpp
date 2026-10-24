@@ -39,8 +39,6 @@ let declaredRoutes = []
 const verdicts = new Map()
 /** origin -> [{ t, predicted, predictedSeconds, prompt, promptSeconds }] newest last */
 const samples = new Map()
-/** origin -> when its last live readings request succeeded */
-const lastLiveAt = new Map()
 /** origin -> Promise */
 const inflight = new Map()
 
@@ -662,14 +660,15 @@ function instantRate(origin, key, secondsKey, gauge, now) {
 
 /**
  * The readings payload for a confirmed llama.cpp origin: `/metrics` and
- * `/slots` in one round trip. Only served while the client's dialog is open.
+ * `/slots` in one round trip. Missing readings stay null: metrics may be
+ * deliberately disabled and slots may be unavailable. Only served while the
+ * client's dialog is open.
  */
 async function liveSnapshot(origin, verdict, auth = {}) {
   const [metricsText, slotsBody] = await Promise.all([
     verdict.metricsEnabled ? fetchText(`${origin}/metrics`, LIVE_TIMEOUT_MS, auth) : Promise.resolve(null),
     fetchJson(`${origin}/slots`, LIVE_TIMEOUT_MS, auth),
   ])
-  if (metricsText === null && slotsBody === null) return null // server unreachable right now
 
   const parsed = metricsText === null ? null : parseMetrics(metricsText)
   const slots = normalizeSlots(slotsBody)
@@ -682,7 +681,9 @@ async function liveSnapshot(origin, verdict, auth = {}) {
   const body = {
     state: 'llama',
     online: true,
-    metricsEnabled: metrics !== null,
+    // Capability, not this scrape's outcome: a failed reading must not tell the
+    // user to launch a server that was already started with --metrics.
+    metricsEnabled: verdict.metricsEnabled,
     servedModel: props?.model ?? null,
     servedModelMatches: null,
     props: props ?? null,
@@ -694,7 +695,6 @@ async function liveSnapshot(origin, verdict, auth = {}) {
     debug: { contextTrace, effortTrace, request: requestTrace },
     updatedAt: now,
   }
-  lastLiveAt.set(origin, now)
   return body
 }
 
@@ -2444,13 +2444,9 @@ function createLiveHandler(ctx, { pollMs, onAvailabilityChange }) {
         pending.catch(() => {}).finally(() => inflight.delete(origin))
       }
       const body = await pending
-      if (body === null) {
-        // Reachability blip on a confirmed llama endpoint: the verdict stands,
-        // this response reports offline, and the next client poll reads live
-        // again — no re-probe and no extra traffic in between.
-        const last = lastLiveAt.get(origin)
-        return json(res, 200, withMatch({ ...base, online: false, ...(last === undefined ? {} : { lastSeenAt: last }) }, model))
-      }
+      // The verdict already proved the origin is llama.cpp. Missing readings are
+      // reported as null fields, never as an unreachable server: /metrics may be
+      // deliberately disabled and /slots may be unavailable (or briefly fail).
       return json(res, 200, withMatch({ ...base, online: true, ...body }, model))
     } catch {
       return json(res, 200, withMatch({ ...base, online: false }, model))
@@ -2913,7 +2909,6 @@ export function apply(ctx, config) {
         if (entry.apiKeyEnv !== wanted) continue
         verdicts.delete(entry.origin)
         catalogs.delete(entry.origin)
-        lastLiveAt.delete(entry.origin)
         probedContextWindows.delete(entry.origin)
         effortCatalog.delete(entry.origin)
       }
@@ -2950,7 +2945,6 @@ export function apply(ctx, config) {
 function resetState() {
   verdicts.clear()
   samples.clear()
-  lastLiveAt.clear()
   inflight.clear()
   progress.clear()
   taskStarts.clear()

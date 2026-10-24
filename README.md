@@ -32,9 +32,40 @@ progress in the composer dock.
 ## Requirements
 
 - DeepSeek Harness `0.2.x`.
-- `llama-server` with the OpenAI-compatible API. `/props` and
-  `/apply-template` enable discovery; `/metrics` and `/slots` enable the richer
-  dialog readings.
+- `llama-server` with the OpenAI-compatible API. `/props` supplies model and
+  context facts, `/apply-template` supplies reasoning levels, and `/metrics` and
+  `/slots` supply the live server readings.
+
+## Launching llama.cpp
+
+Start `llama-server` with the flags that expose the readings this plugin shows:
+
+```sh
+llama-server \
+  -m /path/to/model.gguf \
+  --host 127.0.0.1 --port 9931 \
+  --metrics --slots --jinja
+```
+
+- `--metrics` enables `/metrics`: throughput, prompt-cache hit rate, speculative
+  decoding, and the server counters in **All metrics**. It is optional — the pill
+  and **Server slots** still work without it — but without it the All metrics
+  section only says that metrics are disabled.
+- `--slots` enables `/slots`, which feeds **Server slots** and the session-context
+  line. Current builds enable it by default; do not pass `--no-slots` unless you
+  accept losing those readings. If `--metrics` is also off, the dialog then has
+  no server readings at all: only the pill's own SSE progress remains.
+- `--jinja` uses the model's Jinja chat template, which reasoning and tool calls
+  depend on. Current builds enable it by default; add it explicitly if your build
+  disables Jinja or you pass `--no-jinja`.
+- `--api-key` is optional. If you use it, store the same key in the DSH provider
+  card.
+- `-np` above 1 lets concurrent sessions keep separate slots, and `-c` sets the
+  context window. The plugin reads both from `/props`; neither is configured in
+  DSH.
+
+`--props` is not required: the plugin only reads `/props` with GET, and that flag
+only enables `POST /props`.
 
 ## Install
 

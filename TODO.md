@@ -2,19 +2,6 @@
 
 ## Tasks
 
-- [ ] **Fix the false "Server unreachable" reading when metrics and slots are both
-  unavailable.** `liveSnapshot` returns `null` (→ the `/live` handler answers
-  `online:false` with no `progressLive`) whenever `metricsEnabled` is false and
-  `/slots` is unavailable, because a disabled `/metrics` probe counts as a failed
-  liveness check even though it was never attempted. A healthy llama.cpp started
-  without `--metrics` and `--slots` is then reported as offline while its dialog
-  is open, and the pill's label disappears mid-turn. Only a probe that was
-  actually attempted and failed may mark the origin offline; with metrics
-  disabled, a `/slots` 404 means "no readings", not "offline" — answer
-  `online:true` with null `slots`/`metrics`. Both gates are real: `/slots` needs
-  `--slots` (`server-context.cpp:5658-5662`), `/metrics` needs `--metrics`
-  (`server-context.cpp:5599`). No host test covers this path — add one.
-
 - [ ] **Store the API key before committing the settings write.** The card's save
   path commits the profile (with its `apiKeyEnv` reference) and only then calls
   `setKey` (`client.js`, `ServerForm.save`); a refused key store leaves the route
@@ -272,8 +259,19 @@
   `aria-description` attribute, which is never announced — use `aria-label`,
   `title`, or visually hidden text instead.
 
-- [ ] **Add a user-facing README.** Everything currently documents the plugin
-  for agents (AGENTS.md); nothing tells a user what the pill shows, how to add a
-  server, or why `--metrics`/`--slots` matter. A short README would prevent the
-  most common support questions.
+## Done
+
+- [x] **Report unavailable readings without calling the server offline.**
+  `liveSnapshot` now keeps the confirmed `/props` verdict's `online:true` and
+  returns null `slots`/`metrics` when those endpoints are disabled or unreadable,
+  instead of returning `null` (which the handler rendered as `online:false`).
+  `metricsEnabled` now reports the probe's capability, not whether one scrape
+  succeeded, so a failed reading no longer tells the user to launch with
+  `--metrics`. The dialog distinguishes "metrics disabled" from "metrics enabled
+  but this reading is unavailable". Host coverage includes metrics-off/slots-on,
+  both-off, and a failed metrics scrape.
+
+- [x] **Add a user-facing README.** `README.md` covers the dock pill and dialog,
+  GitHub and `npx` installation, the Settings → Models provider card, the
+  `llama-server` launch flags, development commands, and licensing.
 

@@ -758,12 +758,16 @@ console.log('\n-- session slot affinity --')
     })
     fake('sess-c')
     try {
-      check('an active sub-agent keeps its slot when a new session arrives', await run('sess-g'), 0)
+      // The idle conversations are sess-a and sess-b; either may be the LRU
+      // depending on whether compaction refreshed sess-a's lastSeen. What matters
+      // is that the active sub-agent's slot is not taken.
+      const reused = await run('sess-g')
+      check('an idle conversation is reused for the new session', [0, 1].includes(reused), true)
       check('the active sub-agent still has its slot', await run('sess-c'), 2)
-      for (const session of ['sess-b', 'sess-d', 'sess-e', 'sess-f', 'sess-g']) fake(session)
+      for (const session of ['sess-a', 'sess-b', 'sess-d', 'sess-e', 'sess-f', 'sess-g']) fake(session)
       check('a new session is unpinned when every slot is active', await run('sess-h'), undefined)
     } finally {
-      for (const session of ['sess-b', 'sess-c', 'sess-d', 'sess-e', 'sess-f', 'sess-g']) {
+      for (const session of ['sess-a', 'sess-b', 'sess-c', 'sess-d', 'sess-e', 'sess-f', 'sess-g']) {
         mod.__progress().delete('fake-' + session)
       }
     }
@@ -947,6 +951,82 @@ console.log('\n-- dialog gating --')
     check('a closed dialog still sets the poll interval', light.pollMs, 500)
   } finally {
     globalThis.fetch = realFetch
+  }
+}
+
+// --- 1f'. missing readings are not an offline server ----------------------
+// A llama.cpp started without --metrics (the default) still has /slots, and a
+// build started with --no-slots still has /props. Neither missing endpoint may
+// turn the confirmed origin into "unreachable".
+console.log('\n-- live readings without metrics or slots --')
+{
+  const { createServer } = await import('node:http')
+  const flags = { metrics: false, slots: true, metricsCalls: 0, failLiveMetrics: false }
+  const server = createServer((req, res) => {
+    const path = new URL(req.url, 'http://x').pathname
+    if (path === '/props') {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ total_slots: 1, build_info: 'test', model: 'flags-model' }))
+      return
+    }
+    if (path === '/metrics' && flags.metrics) {
+      flags.metricsCalls += 1
+      if (flags.failLiveMetrics && flags.metricsCalls > 1) {
+        res.writeHead(500)
+        res.end('scrape failed')
+        return
+      }
+      res.writeHead(200, { 'content-type': 'text/plain' })
+      res.end('llamacpp:tokens_predicted_total 10\nllamacpp:tokens_predicted_seconds_total 2\n')
+      return
+    }
+    if (path === '/slots' && flags.slots) {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify([{ id: 0, n_ctx: 8192, is_processing: false, n_prompt_tokens: 12 }]))
+      return
+    }
+    res.writeHead(404)
+    res.end('not found')
+  })
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const origin = `http://127.0.0.1:${server.address().port}`
+  mod.__setLlama({ provider: 'flags', alias: 'flags', baseURL: origin + '/v1', origin, apiKeyEnv: null })
+  const handler = mod.createLiveHandler({ attachments: {} }, { pollMs: 500 })
+  const capture = async (live) => {
+    let body = null
+    const res = { writeHead() {}, end(text) { body = JSON.parse(text) } }
+    await handler({
+      method: 'GET',
+      url: `/llamacpp-metrics/live?provider=flags&model=flags-model&retry=1${live ? '&live=1' : ''}`,
+    }, res)
+    return body
+  }
+  try {
+    const metricsOff = await capture(true)
+    check('metrics off keeps the server online', metricsOff.online, true)
+    check('metrics off reports metrics disabled', metricsOff.metricsEnabled, false)
+    check('metrics off carries a null reading', metricsOff.metrics, null)
+    check('metrics off still returns slots', metricsOff.slots?.total, 1)
+    check('metrics off still returns SSE progress', Array.isArray(metricsOff.progressLive), true)
+
+    flags.slots = false
+    const light = await capture(false)
+    check('no readings still leaves the light poll online', [light.online, light.state], [true, 'llama'])
+    const noReadings = await capture(true)
+    check('no readings still leaves the dialog online', noReadings.online, true)
+    check('no readings reports both sources as absent', [noReadings.metrics, noReadings.slots], [null, null])
+    check('no readings keeps the pill progress', Array.isArray(noReadings.progressLive), true)
+
+    flags.metrics = true
+    flags.failLiveMetrics = true
+    flags.metricsCalls = 0
+    const failedScrape = await capture(true)
+    check('a failed metrics scrape keeps the server online', failedScrape.online, true)
+    check('a failed metrics scrape keeps the capability', failedScrape.metricsEnabled, true)
+    check('a failed metrics scrape reports no reading', failedScrape.metrics, null)
+  } finally {
+    mod.__deleteLlama('flags')
+    await new Promise((resolve) => server.close(resolve))
   }
 }
 

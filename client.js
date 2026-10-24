@@ -56,6 +56,7 @@ window.__ModuleLoader__.load({
       'metrics.processing': 'processing',
       'metrics.note': 'now {rate}',
       'metrics.off': 'metrics off',
+      'metrics.unavailable': 'metrics unavailable',
       'slots.hint': '{busy}/{total} busy',
       'metrics.rawSummary': 'raw Prometheus samples ({count})',
       'metrics.rawSummaryOf': 'raw Prometheus samples ({count} of {total})',
@@ -66,6 +67,7 @@ window.__ModuleLoader__.load({
       'metrics.row.context': 'context',
       'dialog.fetching': 'Reading /metrics and /slots…',
       'note.metricsOff': 'Metrics disabled — start llama-server with --metrics to see throughput.',
+      'note.metricsUnavailable': 'Metrics are enabled, but this reading is unavailable right now.',
       'note.serving': 'Server currently serves {model}.',
       'note.offline': 'Server unreachable — no live readings right now.',
       'card.alias': 'Alias',
@@ -703,6 +705,7 @@ window.__ModuleLoader__.load({
      */
     function metricHint(metrics, metricsEnabled, slots, t) {
       if (metricsEnabled === false) return t('metrics.off');
+      if (metrics === null || metrics === undefined) return t('metrics.unavailable');
       return metricHeadline(metrics, slots, t).slice(0, 2).map((cell) => cell.value).join(' · ');
     }
 
@@ -878,7 +881,9 @@ window.__ModuleLoader__.load({
      */
     function MetricView({ metrics, metricsEnabled, slots, t }) {
       if (metricsEnabled === false) return h('div', { className: 'llamacpp-metrics-note' }, t('note.metricsOff'));
-      if (metrics === null || metrics === undefined) return null;
+      if (metrics === null || metrics === undefined) {
+        return h('div', { className: 'llamacpp-metrics-note' }, t('note.metricsUnavailable'));
+      }
       const headline = metricHeadline(metrics, slots, t);
       const rows = metricRows(metrics, t);
       const raw = Array.isArray(metrics.raw) ? metrics.raw : [];
